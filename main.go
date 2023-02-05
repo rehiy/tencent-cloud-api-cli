@@ -1,17 +1,17 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"net/http"
-	"io/ioutil"
 )
 
 func sha256hex(s string) string {
@@ -25,18 +25,19 @@ func hmacsha256(s, key string) string {
 	return string(hashed.Sum(nil))
 }
 
-// 实际中应该用更好的变量名
 var (
-	h bool
+	h       bool
 	service string
 	version string
-	action string
-	region string
+	action  string
+	region  string
 	payload string
 )
 
 func init() {
-	flag.BoolVar(&h, "h", false, "this help")
+
+	flag.BoolVar(&h, "h", false, "查看帮助")
+
 	flag.StringVar(&service, "service", "", "服务名")
 	flag.StringVar(&version, "version", "", "服务版本")
 	flag.StringVar(&action, "action", "", "服务接口名")
@@ -60,29 +61,39 @@ Options:
 	flag.PrintDefaults()
 }
 
-func PostHeader(url string, msg []byte, headers map[string]string) (string, error) {
-	client := &http.Client{}
+func HttpPost(url, msg string, headers map[string]string) (string, error) {
 
-	req, err := http.NewRequest("POST", url, strings.NewReader(string(msg)))
-	if err != nil {
+	var err error
+	var req *http.Request
+	var resp *http.Response
+	var body []byte
+
+	rd := strings.NewReader(msg)
+	if req, err = http.NewRequest("POST", url, rd); err != nil {
 		return "", err
 	}
+
 	for key, header := range headers {
 		req.Header.Set(key, header)
 	}
-	resp, err := client.Do(req)
-	if err != nil {
+
+	client := &http.Client{}
+	if resp, err = client.Do(req); err != nil {
 		return "", err
 	}
+
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+
+	if body, err = ioutil.ReadAll(resp.Body); err != nil {
 		return "", err
 	}
-	return string(body), nil
+
+	return string(body), err
+
 }
 
 func main() {
+
 	flag.Parse()
 
 	if h {
@@ -90,7 +101,7 @@ func main() {
 		return
 	}
 
-	if service=="" || version=="" || action=="" {
+	if service == "" || version == "" || action == "" {
 		flag.Usage()
 		return
 	}
@@ -99,46 +110,50 @@ func main() {
 	secretKey, ok2 := os.LookupEnv("TENCENTCLOUD_SECRET_KEY")
 
 	if !ok1 || !ok2 {
-		fmt.Println("请执行export命令检查是否设置系统环境变量TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY\n" +
-			"若果未设置，请执行命令设置\n" +
-			"export TENCENTCLOUD_SECRET_KEY=xxxx\n" +
-			"export TENCENTCLOUD_SECRET_ID=yyyy\n")
+		fmt.Println("请执行export命令检查是否设置系统环境变量TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY")
 		return
 	}
 
-	host := service+".tencentcloudapi.com"
+	host := service + ".tencentcloudapi.com"
 	algorithm := "TC3-HMAC-SHA256"
 
 	var timestamp int64 = time.Now().Unix()
 
 	// step 1: build canonical request string
+
 	httpRequestMethod := "POST"
 	canonicalURI := "/"
 	canonicalQueryString := ""
 	canonicalHeaders := "content-type:application/json; charset=utf-8\n" + "host:" + host + "\n"
 	signedHeaders := "content-type;host"
 	hashedRequestPayload := sha256hex(payload)
-	canonicalRequest := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s",
+	canonicalRequest := fmt.Sprintf(
+		"%s\n%s\n%s\n%s\n%s\n%s",
 		httpRequestMethod,
 		canonicalURI,
 		canonicalQueryString,
 		canonicalHeaders,
 		signedHeaders,
-		hashedRequestPayload)
+		hashedRequestPayload,
+	)
 	//fmt.Println(canonicalRequest)
 
 	// step 2: build string to sign
+
 	date := time.Unix(timestamp, 0).UTC().Format("2006-01-02")
 	credentialScope := fmt.Sprintf("%s/%s/tc3_request", date, service)
 	hashedCanonicalRequest := sha256hex(canonicalRequest)
-	string2sign := fmt.Sprintf("%s\n%d\n%s\n%s",
+	string2sign := fmt.Sprintf(
+		"%s\n%d\n%s\n%s",
 		algorithm,
 		timestamp,
 		credentialScope,
-		hashedCanonicalRequest)
+		hashedCanonicalRequest,
+	)
 	//fmt.Println(string2sign)
 
 	// step 3: sign string
+
 	secretDate := hmacsha256(date, "TC3"+secretKey)
 	secretService := hmacsha256(service, secretDate)
 	secretSigning := hmacsha256("tc3_request", secretService)
@@ -146,27 +161,32 @@ func main() {
 	//fmt.Println(signature)
 
 	// step 4: build authorization
-	authorization := fmt.Sprintf("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
+
+	authorization := fmt.Sprintf(
+		"%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
 		algorithm,
 		secretId,
 		credentialScope,
 		signedHeaders,
-		signature)
+		signature,
+	)
 	//fmt.Println(authorization)
 
 	// step 5: send https request
-	url := "https://"+host
+
+	url := "https://" + host
 	headers := make(map[string]string)
 	headers["Authorization"] = authorization
 	headers["Content-Type"] = "application/json; charset=utf-8"
 	headers["Host"] = host
 	headers["X-TC-Action"] = action
-	headers["X-TC-Timestamp"] = strconv.FormatInt(timestamp,10)
+	headers["X-TC-Timestamp"] = strconv.FormatInt(timestamp, 10)
 	headers["X-TC-Version"] = version
 	if region != "" {
 		headers["X-TC-Region"] = region
 	}
-	res, err := PostHeader(url, []byte(payload), headers)
+
+	res, err := HttpPost(url, payload, headers)
 	if err != nil {
 		fmt.Println(err)
 	} else {
