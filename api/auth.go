@@ -1,4 +1,4 @@
-package helper
+package api
 
 import (
 	"crypto/hmac"

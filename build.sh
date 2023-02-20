@@ -1,22 +1,26 @@
 #!/bin/sh
 #
 
-CGO_ENABLED=0
+export CGO_ENABLED=0
 
-platforms="
-    darwin-amd64
-    freebsd-amd64
-    linux-386
-    linux-amd64
-    linux-arm64
-    windows-386
-    windows-amd64
-    windows-arm64
-"
+build() {
+    GOOS=$1
+    GOARCH=$2
+    echo building for $1/$2
+    go build -ldflags="-s -w" -o build/tcapi-$1-$2$3 main.go
+}
 
-for plat in $platforms; do
-    GOOS=${plat%-*}
-    GOARCH=${plat#*-}
-    echo building for $GOOS/$GOARCH
-    go build -o build/$GOOS-$GOARCH *.go
-done
+####################################################################
+
+build android arm64
+
+build darwin amd64
+build darwin arm64
+
+build linux 386
+build linux amd64
+build linux arm64
+
+build windows 386 .exe
+build windows amd64 .exe
+build windows arm64 .exe
