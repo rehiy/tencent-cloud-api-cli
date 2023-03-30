@@ -3,18 +3,21 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 )
 
 var (
-	service string
-	version string
-	action  string
-	region  string
-	payload string
+	service   string
+	version   string
+	action    string
+	region    string
+	payload   string
+	secretId  string
+	secretKey string
 )
 
-func usage() {
+func parseFlag() {
 
 	flag.StringVar(&service, "service", "", "服务名")
 	flag.StringVar(&version, "version", "", "服务版本")
@@ -28,6 +31,17 @@ func usage() {
 	}
 
 	flag.Parse()
+
+}
+
+func checkSecret() {
+
+	secretId, _ = os.LookupEnv("TENCENTCLOUD_SECRET_ID")
+	secretKey, _ = os.LookupEnv("TENCENTCLOUD_SECRET_KEY")
+
+	if secretId == "" || secretKey == "" {
+		log.Fatal("请设置环境变量 TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY")
+	}
 
 }
 
