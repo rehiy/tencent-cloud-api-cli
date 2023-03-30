@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/rehiy/tencent-cloud-api-cli/api"
@@ -12,8 +12,18 @@ func Exec() {
 
 	usage()
 
-	if service == "" || version == "" || action == "" {
-		flag.Usage()
+	if service == "" {
+		log.Fatal("请设置 -service 参数，-h 查看帮助")
+		return
+	}
+
+	if version == "" {
+		log.Fatal("请设置 -version 参数，-h 查看帮助")
+		return
+	}
+
+	if action == "" {
+		log.Fatal("请设置 -action 参数，-h 查看帮助")
 		return
 	}
 
@@ -21,16 +31,15 @@ func Exec() {
 	secretKey, ok2 := os.LookupEnv("TENCENTCLOUD_SECRET_KEY")
 
 	if !ok1 || !ok2 {
-		fmt.Println("请设置环境变量 TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY")
-		return
+		log.Fatal("请设置环境变量 TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY")
 	}
 
 	res, err := api.Request(service, version, action, region, payload, secretId, secretKey)
 
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(res)
+		log.Fatal(err)
 	}
+
+	fmt.Println(res)
 
 }
