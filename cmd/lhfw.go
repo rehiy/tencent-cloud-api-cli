@@ -60,10 +60,7 @@ func GetLighthouseIds() {
 
 func setFirewallRule(id string) {
 
-	payload := `{
-		"InstanceId": "` + id + `",
-		"FirewallRules": ` + payload + `
-	}`
+	payload := `{"InstanceId":"` + id + `","FirewallRules":` + payload + `}`
 
 	res, err := api.Request("lighthouse", "2020-03-24", "CreateFirewallRules", region, payload, secretId, secretKey)
 
