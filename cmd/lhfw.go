@@ -8,7 +8,7 @@ import (
 	"github.com/rehiy/tencent-cloud-api-cli/api"
 )
 
-func GetLighthouseIds() {
+func SetLighthouseFirewalls() {
 
 	parseFlag()
 	checkSecret()
@@ -19,12 +19,13 @@ func GetLighthouseIds() {
 	}
 
 	ready := 1
+	limit := 100
 
 	for i := 0; ; i++ {
 
 		log.Println("正在获取第", i, "页实例信息")
 
-		payload := `{"Offset": ` + strconv.Itoa(i) + `, "Limit": 100}`
+		payload := `{"Offset": ` + strconv.Itoa(limit*i) + `, "Limit": ` + strconv.Itoa(limit) + `}`
 
 		res, err := api.Request("lighthouse", "2020-03-24", "DescribeInstances", region, payload, secretId, secretKey)
 
@@ -51,14 +52,14 @@ func GetLighthouseIds() {
 		for _, item := range instanceSet {
 			id := item.(map[string]any)["InstanceId"].(string)
 			log.Println("正在设置实例 ", id, " 防火墙规则（", ready, "/", total, "）")
-			setFirewallRule(id)
+			//SetLighthouseFirewall(id)
 			ready++
 		}
 	}
 
 }
 
-func setFirewallRule(id string) {
+func SetLighthouseFirewall(id string) {
 
 	payload := `{"InstanceId":"` + id + `","FirewallRules":` + payload + `}`
 
