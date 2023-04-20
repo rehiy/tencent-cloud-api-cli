@@ -1,13 +1,18 @@
 #!/bin/sh
 #
 
+set -e
+set -o noglob
+
+###########################################
+
 export CGO_ENABLED=0
+export GO111MODULE=on
 
 build() {
-    GOOS=$1
-    GOARCH=$2
     echo building for $1/$2
-    go build -ldflags="-s -w" -o build/tcapi-$1-$2$3 main.go
+    out=build/tcapi-$1-$2$3
+    GOOS=$1 GOARCH=$2 go build -ldflags="-s -w" -o $out main.go
 }
 
 ####################################################################
@@ -24,3 +29,9 @@ build linux arm64
 build windows 386 .exe
 build windows amd64 .exe
 build windows arm64 .exe
+
+####################################################################
+
+for app in `ls build`; do
+    gzip build/$app
+done

@@ -2,25 +2,28 @@ name: Tecent Cloud Api Builder
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-go@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
           go-version: 1.18
 
-      - uses: actions/checkout@v3
+      - name: Build go binary
+        run: go mod tidy && sh build.sh
 
-      - run: go mod tidy
-      - run: sh build.sh
-
-      - uses: softprops/action-gh-release@v1
+      - name: Create github release
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v0.0.3
           name: Release v0.0.3
